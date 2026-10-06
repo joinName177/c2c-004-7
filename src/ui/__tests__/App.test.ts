@@ -55,4 +55,22 @@ describe('Luggage planner App', () => {
     await wrapper.get('[data-testid="print-button"]').trigger('click');
     expect(getPrintCount()).toBe(1);
   });
+
+  it('plans a segmented trip and keeps the confirmed route until accepted', async () => {
+    const { wrapper } = render();
+    expect(wrapper.text()).toContain('分段行程');
+    await wrapper.get('[data-testid="recheck-trip"]').trigger('click');
+    expect(wrapper.get('[data-testid="trip-banner"]').text()).toContain('整趟可出发');
+    expect(wrapper.findAll('[data-testid^="segment-"]')).not.toHaveLength(0);
+    expect(wrapper.text()).toContain('交接');
+
+    // 调整中间路段限重 → 生成待确认的新路线，旧路线保留
+    await wrapper.get('[aria-label="第 2 段限重"]').setValue('1');
+    await wrapper.get('[data-testid="recheck-trip"]').trigger('click');
+    expect(wrapper.get('[data-testid="trip-banner"]').text()).toContain('不可出发');
+    expect(wrapper.text()).toContain('新路线 · 待确认');
+    expect(wrapper.text()).toContain('当前已确认路线（接受前保持有效）');
+    await wrapper.get('[data-testid="accept-trip"]').trigger('click');
+    expect(wrapper.text()).not.toContain('新路线 · 待确认');
+  });
 });

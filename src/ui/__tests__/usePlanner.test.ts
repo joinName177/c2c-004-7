@@ -36,4 +36,53 @@ describe('usePlanner', () => {
     expect(planner.plans.value.shopping.name).toBe('购物版');
     expect(repository.saved?.selectedPlan).toBe('shopping');
   });
+
+  it('confirms the first rechecked trip immediately', () => {
+    const planner = usePlanner({ repository: new MemoryRepository(), printPort: { print() {} } });
+    expect(planner.confirmedTrip.value).toBeNull();
+    planner.recheckTrip();
+    expect(planner.confirmedTrip.value).not.toBeNull();
+    expect(planner.draftTrip.value).toBeNull();
+    expect(planner.confirmedTrip.value?.segments).toHaveLength(planner.state.tripSegments.length);
+  });
+
+  it('keeps the confirmed route until the new draft is accepted', () => {
+    const repository = new MemoryRepository();
+    const planner = usePlanner({ repository, printPort: { print() {} } });
+    planner.recheckTrip();
+    const confirmedId = planner.confirmedTrip.value?.id;
+    planner.updateSegment(planner.state.tripSegments[0].id, { maxWeight: 1 });
+    expect(planner.tripStale.value).toBe(true);
+    planner.recheckTrip();
+    expect(planner.tripStale.value).toBe(false);
+    expect(planner.confirmedTrip.value?.id).toBe(confirmedId);
+    expect(planner.draftTrip.value).not.toBeNull();
+    planner.acceptTrip();
+    expect(planner.confirmedTrip.value?.id).not.toBe(confirmedId);
+    expect(planner.draftTrip.value).toBeNull();
+    expect(repository.saved?.confirmedTrip?.id).toBe(planner.confirmedTrip.value?.id);
+  });
+
+  it('discards a draft route without touching the confirmed one', () => {
+    const planner = usePlanner({ repository: new MemoryRepository(), printPort: { print() {} } });
+    planner.recheckTrip();
+    const confirmedId = planner.confirmedTrip.value?.id;
+    planner.addSegment();
+    planner.recheckTrip();
+    expect(planner.draftTrip.value).not.toBeNull();
+    planner.discardTrip();
+    expect(planner.draftTrip.value).toBeNull();
+    expect(planner.confirmedTrip.value?.id).toBe(confirmedId);
+  });
+
+  it('clamps item carry ranges to the trip length', () => {
+    const planner = usePlanner({ repository: new MemoryRepository(), printPort: { print() {} } });
+    const target = planner.state.items[0];
+    planner.updateItemCarry(target.id, 1, 99);
+    const updated = planner.state.items.find((item) => item.id === target.id);
+    expect(updated?.carryFrom).toBe(1);
+    expect(updated?.carryTo).toBe(planner.state.tripSegments.length - 1);
+    planner.updateItemCarry(target.id, 2, 0);
+    expect(planner.state.items.find((item) => item.id === target.id)?.carryTo).toBe(2);
+  });
 });

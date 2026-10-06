@@ -13,6 +13,7 @@ import PackingProjection from './components/PackingProjection.vue';
 import PlanCompare from './components/PlanCompare.vue';
 import RiskPanel from './components/RiskPanel.vue';
 import PrintSheet from './components/PrintSheet.vue';
+import TripPlanner from './components/TripPlanner.vue';
 
 const props = defineProps<{ repository?: PlannerRepository; printPort?: PrintPort }>();
 const planner = usePlanner({ repository: props.repository ?? new LocalPlannerRepository(window.localStorage), printPort: props.printPort ?? new BrowserPrintAdapter() });
@@ -29,7 +30,7 @@ const errors = computed(() => validateSuitcase(planner.state.suitcase));
       <div class="workspace">
         <aside class="left-column">
           <SuitcaseForm :suitcase="planner.state.suitcase" :errors="errors" @update="planner.updateSuitcase" />
-          <section class="panel inventory"><div class="section-title"><div><span>02 / INVENTORY</span><h2>待装物品</h2></div><b>{{ planner.state.items.length }} 件</b></div><ItemEditor @add="planner.addItem" /><ItemList :items="planner.state.items" @remove="planner.removeItem" @toggle="(id, mustHave) => planner.updateItem(id, { mustHave })" /></section>
+          <section class="panel inventory"><div class="section-title"><div><span>02 / INVENTORY</span><h2>待装物品</h2></div><b>{{ planner.state.items.length }} 件</b></div><ItemEditor @add="planner.addItem" /><ItemList :items="planner.state.items" :segments="planner.state.tripSegments" @remove="planner.removeItem" @toggle="(id, mustHave) => planner.updateItem(id, { mustHave })" @carry="planner.updateItemCarry" /></section>
         </aside>
         <section class="right-column">
           <div class="canvas-panel"><div class="canvas-head"><div><span>03 / PACKING MAP</span><h2>{{ planner.currentPlan.value.name }}摆放方案</h2></div><div class="metrics"><span><b>{{ Math.round(planner.currentPlan.value.capacityRatio * 100) }}%</b>空间利用</span><span><b>{{ planner.currentPlan.value.totalWeight.toFixed(1) }}</b>kg 已装</span><span><b>{{ planner.currentPlan.value.unplaced.length }}</b>件未装</span></div></div><div class="projections"><PackingProjection view="top" :plan="planner.currentPlan.value" :suitcase="planner.state.suitcase" :items="planner.state.items" :selected-id="selectedItem" @select="selectedItem = $event" /><PackingProjection view="side" :plan="planner.currentPlan.value" :suitcase="planner.state.suitcase" :items="planner.state.items" :selected-id="selectedItem" @select="selectedItem = $event" /></div><p class="canvas-note">点击色块可在两个视图中同步定位物品。摆放坐标以箱体左下后角为原点。</p></div>
@@ -37,6 +38,18 @@ const errors = computed(() => validateSuitcase(planner.state.suitcase));
         </section>
       </div>
       <p class="notice" aria-live="polite">{{ planner.notice.value }}</p>
+      <TripPlanner
+        :segments="planner.state.tripSegments"
+        :confirmed-trip="planner.confirmedTrip.value"
+        :draft-trip="planner.draftTrip.value"
+        :stale="planner.tripStale.value"
+        @add-segment="planner.addSegment"
+        @remove-segment="planner.removeSegment"
+        @update-segment="planner.updateSegment"
+        @recheck="planner.recheckTrip"
+        @accept="planner.acceptTrip"
+        @discard="planner.discardTrip"
+      />
     </main>
     <PrintSheet :suitcase="planner.state.suitcase" :items="planner.state.items" :plan="planner.currentPlan.value" :risks="planner.risks.value" />
   </div>
