@@ -12,6 +12,7 @@ import ItemList from './components/ItemList.vue';
 import PackingProjection from './components/PackingProjection.vue';
 import PlanCompare from './components/PlanCompare.vue';
 import RiskPanel from './components/RiskPanel.vue';
+import JourneyPanel from './components/JourneyPanel.vue';
 import PrintSheet from './components/PrintSheet.vue';
 
 const props = defineProps<{ repository?: PlannerRepository; printPort?: PrintPort }>();
@@ -36,6 +37,21 @@ const errors = computed(() => validateSuitcase(planner.state.suitcase));
           <RiskPanel :risks="planner.risks.value" />
         </section>
       </div>
+      <JourneyPanel
+        :segments="planner.state.journey.segments"
+        :items="planner.state.items"
+        :route="planner.displayRoute.value"
+        :draft="planner.draftRoute.value"
+        :dirty="planner.journeyDirty.value"
+        :can-depart="planner.canDepart.value"
+        :has-confirmed="!!planner.state.journey.confirmedRoute"
+        @add-segment="planner.addSegment"
+        @remove-segment="planner.removeSegment"
+        @update-segment="planner.updateSegment"
+        @update-segment-suitcase="planner.updateSegmentSuitcase"
+        @update-carry="planner.updateCarryWindow"
+        @accept="planner.acceptRoute"
+      />
       <p class="notice" aria-live="polite">{{ planner.notice.value }}</p>
     </main>
     <PrintSheet :suitcase="planner.state.suitcase" :items="planner.state.items" :plan="planner.currentPlan.value" :risks="planner.risks.value" />

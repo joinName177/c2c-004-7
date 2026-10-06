@@ -36,4 +36,39 @@ describe('usePlanner', () => {
     expect(planner.plans.value.shopping.name).toBe('购物版');
     expect(repository.saved?.selectedPlan).toBe('shopping');
   });
+
+  it('manages segments and carry windows', () => {
+    const planner = usePlanner({ repository: new MemoryRepository(), printPort: { print() {} } });
+    planner.addSegment();
+    expect(planner.state.journey.segments).toHaveLength(2);
+    planner.updateCarryWindow('jacket', { carryFrom: 2 });
+    expect(planner.draftRoute.value.results[0].activeItemIds).not.toContain('jacket');
+    expect(planner.draftRoute.value.results[1].activeItemIds).toContain('jacket');
+    planner.removeSegment(planner.state.journey.segments[1].id);
+    expect(planner.state.journey.segments).toHaveLength(1);
+    planner.removeSegment(planner.state.journey.segments[0].id);
+    expect(planner.state.journey.segments).toHaveLength(1);
+  });
+
+  it('keeps the confirmed route until the new result is accepted', () => {
+    const repository = new MemoryRepository();
+    const planner = usePlanner({ repository, printPort: { print() {} } });
+    expect(planner.journeyDirty.value).toBe(true);
+    expect(planner.canDepart.value).toBe(false);
+    planner.acceptRoute();
+    expect(planner.journeyDirty.value).toBe(false);
+    expect(planner.canDepart.value).toBe(true);
+
+    const confirmedWeight = planner.state.journey.confirmedRoute?.results[0].plan.totalWeight;
+    planner.updateSegmentSuitcase(planner.state.journey.segments[0].id, { maxWeight: 0.1 });
+    expect(planner.journeyDirty.value).toBe(true);
+    expect(planner.displayRoute.value.results[0].plan.totalWeight).toBe(confirmedWeight);
+    expect(planner.canDepart.value).toBe(false);
+
+    planner.acceptRoute();
+    expect(planner.journeyDirty.value).toBe(false);
+    expect(planner.displayRoute.value.results[0].plan.totalWeight).not.toBe(confirmedWeight);
+    expect(planner.canDepart.value).toBe(false);
+    expect(repository.saved?.journey.confirmedRoute?.signature).toBe(planner.draftRoute.value.signature);
+  });
 });

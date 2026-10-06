@@ -44,15 +44,37 @@ describe('Luggage planner App', () => {
     const { wrapper } = render();
     await wrapper.get('[data-plan="shopping"]').trigger('click');
     expect(wrapper.get('[data-plan="shopping"]').classes()).toContain('active');
-    const jacket = wrapper.findAll('[data-item-id="jacket"]');
+    const jacket = wrapper.findAll('.canvas-panel [data-item-id="jacket"]');
     expect(jacket.length).toBe(2);
     await jacket[0].trigger('click');
-    expect(wrapper.findAll('[data-item-id="jacket"].selected')).toHaveLength(2);
+    expect(wrapper.findAll('.canvas-panel [data-item-id="jacket"].selected')).toHaveLength(2);
   });
 
   it('delegates printing through the print port', async () => {
     const { wrapper, getPrintCount } = render();
     await wrapper.get('[data-testid="print-button"]').trigger('click');
     expect(getPrintCount()).toBe(1);
+  });
+
+  it('requires accepting the recomputed route before departure', async () => {
+    const { wrapper } = render();
+    expect(wrapper.text()).toContain('分段行程规划');
+    expect(wrapper.get('[data-testid="depart-status"]').text()).toContain('待确认');
+    await wrapper.get('[data-testid="accept-route"]').trigger('click');
+    expect(wrapper.get('[data-testid="depart-status"]').text()).toContain('可出发');
+  });
+
+  it('shows handoff groups between segments and keeps the old route after edits', async () => {
+    const { wrapper } = render();
+    await wrapper.get('[data-testid="accept-route"]').trigger('click');
+    await wrapper.get('[data-testid="add-segment"]').trigger('click');
+    expect(wrapper.get('[data-testid="depart-status"]').text()).toContain('待确认');
+    expect(wrapper.text()).toContain('接受新路线');
+    await wrapper.get('[data-testid="toggle-preview"]').trigger('click');
+    expect(wrapper.get('[data-testid="handoff-0"]').text()).toContain('取出');
+    expect(wrapper.get('[data-testid="handoff-0"]').text()).toContain('新增');
+    expect(wrapper.get('[data-testid="handoff-0"]').text()).toContain('需重排');
+    await wrapper.get('[data-testid="accept-route"]').trigger('click');
+    expect(wrapper.get('[data-testid="depart-status"]').text()).toContain('可出发');
   });
 });

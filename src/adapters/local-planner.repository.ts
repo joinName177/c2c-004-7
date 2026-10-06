@@ -1,3 +1,4 @@
+import { createDefaultJourney } from '../core/journey-service';
 import { createSampleSnapshot } from '../core/sample-data';
 import type { PackingSnapshot } from '../core/models';
 import type { LoadResult, PlannerRepository } from '../ports/planner-repository.port';
@@ -11,7 +12,9 @@ export class LocalPlannerRepository implements PlannerRepository {
     const raw = this.storage.getItem(KEY);
     if (!raw) return { value: createSampleSnapshot() };
     try {
-      return { value: JSON.parse(raw) as PackingSnapshot };
+      const parsed = JSON.parse(raw) as PackingSnapshot;
+      if (!parsed.journey?.segments?.length) parsed.journey = createDefaultJourney(parsed.suitcase);
+      return { value: parsed };
     } catch {
       return { value: createSampleSnapshot(), warning: '本地数据无法读取，已恢复示例。' };
     }
